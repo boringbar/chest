@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:chest}",
+            "name": "Debug Chest",
+            "target": "Chest",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Chest"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:chest}",
+            "name": "Release Chest",
+            "target": "Chest",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Chest"
+        }
+    ]
+}
