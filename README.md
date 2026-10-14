@@ -29,7 +29,7 @@ Quitting Chest puts every item back in the menu bar; the next launch tucks them 
 
 On macOS 27 other menu bar managers hide items with the menu bar part of exam mode (assessment mode). That also hides Focus and Control Center's camera and microphone indicator, hides every app that does not run from `/Applications`, and stops the clock from opening Notification Center.
 
-Chest uses macOS's own switches instead: the ones under **System Settings › Menu Bar › Allow in the Menu Bar**, plus Spotlight's own checkbox. None of that happens:
+Chest uses macOS's own switches instead: the ones under **System Settings › Menu Bar › Allow in the Menu Bar**, plus the checkboxes under **Menu Bar Controls**. None of that happens:
 
 - The camera, microphone and Focus indicators stay where they are.
 - The clock still opens Notification Center.
@@ -41,9 +41,9 @@ See [docs/APPROACH.md](docs/APPROACH.md) for how it works and what was ruled out
 
 - macOS 27 or later.
 - **Accessibility**, to see where items are in the menu bar and to open them from the drawer.
-- **Full Disk Access**, because macOS keeps the "Allow in the Menu Bar" list in a protected place. After you switch it on, macOS asks to quit and reopen Chest; choose **Quit & Reopen**.
+- **Two files**, which macOS keeps in a protected place: the "Allow in the Menu Bar" list, to hide items, and the menu bar's layout, to keep the dot at the left end and put items back where you drop them. Chest opens each one's folder in an Open panel; select the file and click **Allow**. That gives Chest that one file and nothing else around it, at once, with no relaunch. A Chest that already has Full Disk Access keeps working without this.
 
-Chest asks for both on first launch and shows their status. It makes no network connections.
+Chest asks for all three on first launch and shows their status. It makes no network connections.
 
 ## Install
 
@@ -76,7 +76,7 @@ Debug builds log to stderr with a `[Chest]` prefix.
 
 - Hiding is per app: an app with two menu bar items hides both.
 - macOS lists an app under "Allow in the Menu Bar" by itself, usually as soon as its item appears. Until it does, the app cannot go into the chest; Chest says so and offers **Refresh Menu Bar**, which restarts the menu bar so macOS lists it (the menu bar blinks once).
-- Of the items under **Menu Bar Controls**, only Spotlight can go in so far. The others (Wi-Fi, Sound, …) each need their switch mapped; see the approach doc.
+- Of the items under **Menu Bar Controls**, these can go in: Wi-Fi, Bluetooth, AirDrop, Focus, Screen Mirroring, Display, Sound, Now Playing, Fast User Switching, Timer, Spotlight, Text Input and Weather. The clock and Control Center can't, nor can the controls added from the Control Gallery. Time Machine, VPN, Battery and the others of a portable Mac aren't mapped yet; see the approach doc.
 - If Chest is force quit or crashes, the items stay hidden until it runs again, or until you switch them back on in System Settings › Menu Bar.
 - Items that do not fit in the menu bar are collapsed by macOS behind its own `«` button, on any Mac (sooner on one with a notch). That includes items hidden left of the dot when Chest opens: keep a few there and the rest in the drawer, which wraps into rows of ten and has room for any number.
 - The list and its format are undocumented and may change in a macOS update.
