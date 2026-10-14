@@ -1,6 +1,6 @@
 cask "chest" do
-  version "0.1.1"
-  sha256 "66e49ae43eba51e43b4a68ae957bba03a16266aa2ac51be2da847c0a8caf6860"
+  version "0.2.1"
+  sha256 "5756a265bf8cc66ecd9ae6a9701c9cc840acf325e9c42bba6ceea8dc1e602c07"
 
   url "https://files.boringbar.app/chest/Chest-#{version}.zip"
   name "Chest"
