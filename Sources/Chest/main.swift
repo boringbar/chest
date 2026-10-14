@@ -8,7 +8,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private static let didWelcomeKey = "didShowWelcome"
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        Permissions.announceFullDiskAccessUse()
+        // Before anything reads the protected files.
+        FileAccess.restore()
         let controller = ChestController()
         controller.onNeedsPermissions = { [weak self] in self?.welcome.show() }
         self.controller = controller

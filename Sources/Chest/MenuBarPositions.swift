@@ -12,9 +12,20 @@ enum MenuBarPositions {
 
     /// Every item's position, by key.
     static func all() -> [String: Double] {
+        // CFPreferences keeps what it read; MenuBarAgent writes these while Chest runs.
+        CFPreferencesSynchronize(domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
         let value = CFPreferencesCopyValue(key as CFString, domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
         guard let dictionary = value as? [String: Any] else { return [:] }
         return dictionary.compactMapValues { ($0 as? NSNumber)?.doubleValue }
+    }
+
+    /// Writes positions by key, keeping every other.
+    static func set(_ positions: [String: Double]) {
+        let value = CFPreferencesCopyValue(key as CFString, domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+        var dictionary = value as? [String: Any] ?? [:]
+        for (key, position) in positions { dictionary[key] = position }
+        CFPreferencesSetValue(key as CFString, dictionary as CFDictionary, domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
+        CFPreferencesSynchronize(domain as CFString, kCFPreferencesCurrentUser, kCFPreferencesAnyHost)
     }
 
     /// Moves every item of `bundleID` to `position`. Returns false if MenuBarAgent has no

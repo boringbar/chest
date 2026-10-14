@@ -2,8 +2,9 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// First-launch window: what Chest does, how to use it, and the two permissions it needs,
-/// each with its live status and a button that opens the right pane of System Settings.
+/// First-launch window: what Chest does, how to use it, and what it needs, each with its
+/// live status: Accessibility, with a button that opens its pane of System Settings, and the
+/// two protected files, each with a button that asks for it (`FileAccess`).
 @MainActor
 final class WelcomeWindowController {
     private var window: NSWindow?
@@ -39,7 +40,7 @@ private struct WelcomeView: View {
     let onDone: () -> Void
 
     @State private var hasAccessibility = Permissions.hasAccessibility
-    @State private var hasFullDiskAccess = Permissions.hasFullDiskAccess
+    @State private var hasFiles = Dictionary(uniqueKeysWithValues: ProtectedFile.allCases.map { ($0, Permissions.hasFile($0)) })
     private let refresh = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
@@ -62,24 +63,28 @@ private struct WelcomeView: View {
             Divider()
 
             VStack(alignment: .leading, spacing: 12) {
-                Text("Chest needs two permissions").font(.headline)
+                Text("Chest needs Accessibility and two files").font(.headline)
                 PermissionRow(
                     title: "Accessibility",
                     detail: "To see where menu bar items are, and to open them from the drawer.",
                     isGranted: hasAccessibility,
+                    actionTitle: "Open Settings…",
                     action: Permissions.requestAccessibility
                 )
-                PermissionRow(
-                    title: "Full Disk Access",
-                    detail: "To hide items, Chest uses macOS’s own “Allow in the Menu Bar” switches, which are kept in a protected place. Focus and the camera and microphone indicators stay visible.",
-                    isGranted: hasFullDiskAccess,
-                    action: Permissions.openFullDiskAccess
-                )
+                ForEach(ProtectedFile.allCases, id: \.self) { file in
+                    PermissionRow(
+                        title: file.title,
+                        detail: file.detail,
+                        isGranted: hasFiles[file] ?? false,
+                        actionTitle: "Choose File…",
+                        action: { FileAccess.choose(file) { hasFiles[file] = $0 } }
+                    )
+                }
             }
 
             HStack {
                 Spacer()
-                Button(hasAccessibility && hasFullDiskAccess ? "Get Started" : "Later", action: onDone)
+                Button(hasAccessibility && !hasFiles.values.contains(false) ? "Get Started" : "Later", action: onDone)
                     .keyboardShortcut(.defaultAction)
                     .controlSize(.large)
             }
@@ -89,7 +94,7 @@ private struct WelcomeView: View {
         .frame(width: 460)
         .onReceive(refresh) { _ in
             hasAccessibility = Permissions.hasAccessibility
-            hasFullDiskAccess = Permissions.hasFullDiskAccess
+            for file in ProtectedFile.allCases { hasFiles[file] = Permissions.hasFile(file) }
         }
     }
 }
@@ -128,6 +133,7 @@ private struct PermissionRow: View {
     let title: String
     let detail: String
     let isGranted: Bool
+    let actionTitle: String
     let action: () -> Void
 
     var body: some View {
@@ -147,7 +153,7 @@ private struct PermissionRow: View {
             if isGranted {
                 Text("Granted").font(.callout).foregroundStyle(.secondary)
             } else {
-                Button("Open Settings…", action: action)
+                Button(actionTitle, action: action)
             }
         }
     }

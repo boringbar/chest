@@ -1,4 +1,5 @@
 import AppKit
+import ChestCore
 
 /// Where Chest keeps an app's items, both persisted in user defaults in the order they went in.
 enum Section {
@@ -70,19 +71,32 @@ struct AppInfo {
     let icon: NSImage
     let isRunning: Bool
 
+    /// System items, which have no app icon of their own: Spotlight and Text Input belong to
+    /// background services, Weather to a login item, the others to MenuBarAgent.
+    private static let systemItems: [String: (name: String, symbol: String)] = {
+        var items = Dictionary(uniqueKeysWithValues: SystemItems.all.map { ($0.id, ($0.name, $0.symbol)) })
+        items["com.apple.campo"] = ("Spotlight", "magnifyingglass")
+        items["com.apple.TextInputMenuAgent"] = ("Text Input", "keyboard")
+        items["com.apple.weather.menu"] = ("Weather", "cloud.sun")
+        return items
+    }()
+
     @MainActor
     init(bundleID: String) {
         self.bundleID = bundleID
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first
-        isRunning = running != nil
-        if bundleID == "com.apple.campo" {
-            // The Spotlight item belongs to a background service with no icon of its own.
-            name = "Spotlight"
-            let symbol = NSImage(systemSymbolName: "magnifyingglass", accessibilityDescription: "Spotlight")!
+        if let system = Self.systemItems[bundleID] {
+            // MenuBarAgent's own items have no process, and Weather's login item runs only
+            // while its item is shown; they are always there.
+            isRunning = running != nil || SystemItems.item(id: bundleID) != nil || MenuBarSwitches.isLoginItem(bundleID)
+            name = system.name
+            let symbol = NSImage(systemSymbolName: system.symbol, accessibilityDescription: system.name)
+                ?? NSImage(systemSymbolName: "circle", accessibilityDescription: system.name)!
             icon = symbol.withSymbolConfiguration(.init(pointSize: 15, weight: .medium)) ?? symbol
             icon.isTemplate = true
             return
         }
+        isRunning = running != nil
         let url = running?.bundleURL ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
         name = running?.localizedName
             ?? url.map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") }

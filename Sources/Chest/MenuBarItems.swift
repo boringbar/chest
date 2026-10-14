@@ -1,5 +1,6 @@
 import AppKit
 import ApplicationServices
+import ChestCore
 
 /// The items macOS 27 shows in the menu bar, read and pressed over Accessibility.
 ///
@@ -7,6 +8,11 @@ import ApplicationServices
 /// Each child of such a window is a slot carrying the item's frame. An app item's slot holds
 /// an `AXApplication` element owned by the app; under it, the app's extras menu bar holds the
 /// item itself, an `AXMenuBarItem` with the `AXMenuExtra` subrole that takes `AXPress`.
+/// MenuBarAgent's own items hold that menu extra in a hosting view instead, and are listed
+/// under its identifier, which stands in for a bundle ID: `com.apple.menuextra.<name>` for
+/// the system items (Wi-Fi, the clock, …), something else for the controls added from the
+/// Control Gallery (`:com.apple.clock:…:<UUID>`). Those in `SystemItems` can be put away; the
+/// others only count for the dot.
 /// Only MenuBarAgent and that one element are asked anything, so an unresponsive app cannot
 /// stall a read. Every call is a blocking IPC: call off the main thread.
 enum MenuBarItems {
@@ -19,25 +25,29 @@ enum MenuBarItems {
         let bundleID: String
         /// Accessibility coordinates: origin at the top left of the primary display.
         let frame: CGRect
+        /// An app's item, or one of MenuBarAgent's that Chest has a switch for.
+        let canHide: Bool
     }
 
-    /// App items in the menu bar that contains `point` (Accessibility coordinates).
+    /// Items in the menu bar that contains `point` (Accessibility coordinates), every item of
+    /// an app with several.
     static func items(inMenuBarContaining point: CGPoint) -> [Item] {
         var items: [String: Item] = [:]
-        forEachSlot { window, slotFrame, bundleID, _ in
+        forEachSlot { window, slotFrame, bundleID, _, canHide in
             guard window.contains(point) else { return }
-            // The same item shows in every Space's window; keep one.
-            if items[bundleID] == nil { items[bundleID] = Item(bundleID: bundleID, frame: slotFrame) }
+            // The same item shows in every Space's window, in the same place; keep one.
+            let key = "\(bundleID)@\(Int(slotFrame.minX.rounded()))"
+            if items[key] == nil { items[key] = Item(bundleID: bundleID, frame: slotFrame, canHide: canHide) }
         }
         return items.values.sorted { $0.frame.minX < $1.frame.minX }
     }
 
     /// The item being ⌘-dragged. While a drag lasts, MenuBarAgent draws the item in a small
     /// window of its own that rises above the top of the screen.
-    static func draggedItem() -> String? {
-        var found: String?
-        forEachSlot { window, _, bundleID, _ in
-            if found == nil, window.minY < 0 { found = bundleID }
+    static func draggedItem() -> Item? {
+        var found: Item?
+        forEachSlot { window, slot, bundleID, _, canHide in
+            if found == nil, window.minY < 0 { found = Item(bundleID: bundleID, frame: slot, canHide: canHide) }
         }
         return found
     }
@@ -45,7 +55,7 @@ enum MenuBarItems {
     /// Where the item of `bundleID` is drawn, on any display.
     static func frame(of bundleID: String) -> CGRect? {
         var found: CGRect?
-        forEachSlot { _, slot, owner, _ in
+        forEachSlot { _, slot, owner, _, _ in
             if found == nil, owner == bundleID { found = slot }
         }
         return found
@@ -54,14 +64,14 @@ enum MenuBarItems {
     /// The apps with an item drawn in a menu bar right now, in one pass.
     static func shownBundleIDs() -> Set<String> {
         var found: Set<String> = []
-        forEachSlot { _, _, bundleID, _ in found.insert(bundleID) }
+        forEachSlot { _, _, bundleID, _, _ in found.insert(bundleID) }
         return found
     }
 
     /// The pressable item of `bundleID`, if it is in the menu bar right now.
     static func menuExtra(of bundleID: String) -> Element? {
         var found: Element?
-        forEachSlot { _, _, owner, element in
+        forEachSlot { _, _, owner, element, _ in
             guard found == nil, owner == bundleID else { return }
             for bar in children(of: element) {
                 for item in children(of: bar) where string(item, kAXSubroleAttribute) == "AXMenuExtra" {
@@ -142,7 +152,7 @@ enum MenuBarItems {
 
     // MARK: - Tree walking
 
-    private static func forEachSlot(_ body: (_ window: CGRect, _ slot: CGRect, _ bundleID: String, _ owner: AXUIElement) -> Void) {
+    private static func forEachSlot(_ body: (_ window: CGRect, _ slot: CGRect, _ bundleID: String, _ owner: AXUIElement, _ canHide: Bool) -> Void) {
         guard let agent = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.MenuBarAgent").first else { return }
         let app = AXUIElementCreateApplication(agent.processIdentifier)
         AXUIElementSetMessagingTimeout(app, 1)
@@ -152,9 +162,17 @@ enum MenuBarItems {
                 guard let slotFrame = frame(of: slot), slotFrame.width > 0,
                       let owner = children(of: slot).first else { continue }
                 var pid: pid_t = 0
-                guard AXUIElementGetPid(owner, &pid) == .success, pid != agent.processIdentifier,
-                      let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier else { continue }
-                body(windowFrame, slotFrame, bundleID, owner)
+                guard AXUIElementGetPid(owner, &pid) == .success else { continue }
+                if pid == agent.processIdentifier {
+                    // MenuBarAgent's own item: a hosting view holding the menu extra, whose
+                    // identifier names it. The slot stands in for the app element, so the
+                    // menu extra is two levels down, as with an app's item.
+                    guard let id = children(of: owner).lazy.compactMap({ string($0, kAXIdentifierAttribute) }).first else { continue }
+                    body(windowFrame, slotFrame, id, slot, SystemItems.item(id: id) != nil)
+                    continue
+                }
+                guard let bundleID = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier else { continue }
+                body(windowFrame, slotFrame, bundleID, owner, true)
             }
         }
     }
