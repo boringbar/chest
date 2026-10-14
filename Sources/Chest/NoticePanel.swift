@@ -48,14 +48,16 @@ final class NoticePanel: NSPanel {
         stack.alignment = .leading
         stack.spacing = 4
         stack.setCustomSpacing(10, after: detailLabel)
-        stack.edgeInsets = NSEdgeInsets(top: 12, left: 14, bottom: 12, right: 14)
         stack.translatesAutoresizingMaskIntoConstraints = false
         effectView.addSubview(stack)
+        // The margins are constraints rather than the stack's edge insets: with leading
+        // alignment the stack gives way on its trailing inset, and the panel's fitting size
+        // left the text against its right edge.
         NSLayoutConstraint.activate([
-            stack.leadingAnchor.constraint(equalTo: effectView.leadingAnchor),
-            stack.trailingAnchor.constraint(equalTo: effectView.trailingAnchor),
-            stack.topAnchor.constraint(equalTo: effectView.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: effectView.bottomAnchor),
+            stack.leadingAnchor.constraint(equalTo: effectView.leadingAnchor, constant: 14),
+            stack.trailingAnchor.constraint(equalTo: effectView.trailingAnchor, constant: -14),
+            stack.topAnchor.constraint(equalTo: effectView.topAnchor, constant: 12),
+            stack.bottomAnchor.constraint(equalTo: effectView.bottomAnchor, constant: -12),
             detailLabel.widthAnchor.constraint(equalToConstant: 280),
         ])
     }
