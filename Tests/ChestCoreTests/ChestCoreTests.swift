@@ -67,6 +67,21 @@ final class MenuBarGeometryTests: XCTestCase {
         XCTAssertEqual(MenuBarGeometry.menuBarMenus([statusMenu, contextMenu], menuBars: [bar]), [statusMenu])
     }
 
+    func testOverlaysCoveringTheMenuBarAreNotMenus() {
+        // An invisible full-screen window at the menu level, as overlay utilities keep.
+        let overlay = CGRect(x: 0, y: 0, width: 1470, height: 878)
+        let strip = CGRect(x: 0, y: 850, width: 1470, height: 28)
+        // Measured: a status item's menu hangs 1 point below the bar.
+        let statusMenu = CGRect(x: 691, y: 854 - 1 - 93, width: 175, height: 93)
+        XCTAssertEqual(MenuBarGeometry.menuBarMenus([overlay, strip, statusMenu], menuBars: [bar]), [statusMenu])
+        XCTAssertTrue(MenuBarGeometry.isOutside(CGPoint(x: 300, y: 400), menuBars: [bar], menus: [overlay]))
+        XCTAssertTrue(MenuBarGeometry.coversMenuBar(overlay, menuBars: [bar]))
+        XCTAssertTrue(MenuBarGeometry.coversMenuBar(strip, menuBars: [bar]))
+        XCTAssertFalse(MenuBarGeometry.coversMenuBar(statusMenu, menuBars: [bar]))
+        // A popover or panel elsewhere on screen does not cover it either.
+        XCTAssertFalse(MenuBarGeometry.coversMenuBar(CGRect(x: 400, y: 300, width: 300, height: 200), menuBars: [bar]))
+    }
+
     func testOutsideClicks() {
         let menu = CGRect(x: 1150, y: 760, width: 160, height: 92)
         let drawer = CGRect(x: 1100, y: 810, width: 200, height: 38)

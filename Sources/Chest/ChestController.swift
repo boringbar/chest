@@ -852,7 +852,7 @@ final class ChestController {
             return
         }
         let pids = Set(store.hidden.compactMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first?.processIdentifier })
-        let inHiddenAppWindow = Screens.windows().contains { pids.contains($0.pid) && $0.level > 0 && $0.frame.contains(location) }
+        let inHiddenAppWindow = Screens.itemWindows(of: pids).contains { $0.contains(location) }
         guard !inHiddenAppWindow,
               MenuBarGeometry.isOutside(location, menuBars: Screens.menuBars, menus: Screens.openMenus) else { return }
         closeChest()
@@ -889,11 +889,12 @@ final class ChestController {
     }
 
     /// Whether a menu hangs from the menu bar, or an app hidden left of the dot shows a
-    /// window above normal ones (a popover or panel).
+    /// window above normal ones (a popover or panel). An overlay covering the menu bar is
+    /// neither: counting one kept the chest from ever closing.
     private func isHiddenItemShowingUI() -> Bool {
         if !MenuBarGeometry.menuBarMenus(Screens.openMenus, menuBars: Screens.menuBars).isEmpty { return true }
         let pids = Set(store.hidden.compactMap { NSRunningApplication.runningApplications(withBundleIdentifier: $0).first?.processIdentifier })
-        return Screens.windows().contains { pids.contains($0.pid) && $0.level > 0 }
+        return !Screens.itemWindows(of: pids).isEmpty
     }
 
     /// Closes only the drawer; the chest stays open.
@@ -1081,7 +1082,7 @@ final class ChestController {
     private func isOpenedItemShowingUI() -> Bool {
         if !MenuBarGeometry.menuBarMenus(Screens.openMenus, menuBars: Screens.menuBars).isEmpty { return true }
         guard let pid = opened?.pid else { return false }
-        return Screens.windows().contains { $0.pid == pid && $0.level > 0 }
+        return !Screens.itemWindows(of: [pid]).isEmpty
     }
 
     /// Puts the opened item back once what it opened has closed, or after a click outside

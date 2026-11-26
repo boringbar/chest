@@ -385,7 +385,10 @@ private final class DragImageWindow: NSPanel {
 /// dot itself cannot be the target: MenuBarAgent slides it aside to make room for the item.
 @MainActor
 final class DropPanel: NSPanel {
-    private static let size = NSSize(width: 150, height: 64)
+    private static let size = NSSize(width: 150, height: 72)
+    /// The icon's box, big enough for the targeted (larger) symbol, so the label keeps its
+    /// place and its distance when the symbol grows.
+    private static let iconSide: CGFloat = 26
     private let effectView = NSVisualEffectView()
     private let icon = NSImageView()
     private let label = NSTextField(labelWithString: "Drop in Chest")
@@ -434,7 +437,11 @@ final class DropPanel: NSPanel {
         stack.spacing = 4
         stack.translatesAutoresizingMaskIntoConstraints = false
         effectView.addSubview(stack)
+        icon.imageScaling = .scaleNone
+        icon.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
+            icon.widthAnchor.constraint(equalToConstant: Self.iconSide),
+            icon.heightAnchor.constraint(equalToConstant: Self.iconSide),
             stack.centerXAnchor.constraint(equalTo: effectView.centerXAnchor),
             stack.centerYAnchor.constraint(equalTo: effectView.centerYAnchor),
         ])
