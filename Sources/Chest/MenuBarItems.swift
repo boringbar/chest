@@ -235,7 +235,16 @@ enum Screens {
         return windows(atLevel: Int(CGWindowLevelForKey(.popUpMenuWindow))).filter { $0.pid != own }.map(\.frame)
     }
 
+    /// Frames of the windows of `pids` that something opened from a menu bar item could be:
+    /// above normal windows (a popover or panel) and hanging below the menu bar rather than
+    /// covering it, as the invisible overlays some utilities keep at high levels do.
+    @MainActor static func itemWindows(of pids: Set<pid_t>) -> [CGRect] {
+        let bars = menuBars
+        return windows().filter { pids.contains($0.pid) && $0.level > 0 && !MenuBarGeometry.coversMenuBar($0.frame, menuBars: bars) }.map(\.frame)
+    }
+
     /// On-screen windows, optionally only those at `level`, with owner and Cocoa frame.
+    /// Fully transparent windows are left out: nothing shows there.
     @MainActor static func windows(atLevel level: Int? = nil) -> [(pid: pid_t, level: Int, frame: CGRect)] {
         guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
             return []
@@ -243,6 +252,7 @@ enum Screens {
         return list.compactMap { info in
             let layer = info[kCGWindowLayer as String] as? Int ?? 0
             if let level, layer != level { return nil }
+            if let alpha = info[kCGWindowAlpha as String] as? Double, alpha <= 0 { return nil }
             guard let pid = info[kCGWindowOwnerPID as String] as? pid_t,
                   let bounds = info[kCGWindowBounds as String] as? NSDictionary,
                   let rect = CGRect(dictionaryRepresentation: bounds) else { return nil }

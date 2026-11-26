@@ -7,13 +7,29 @@ public enum MenuBarGeometry {
     /// bottom edge. Context menus elsewhere on screen do not count.
     public static let menuGap: CGFloat = 12
 
-    /// The menus among `menus` that hang from one of `menuBars`.
+    /// How far into a menu bar a menu's top edge may reach. Measured on macOS 27: a status
+    /// item's menu hangs 1 point below the bar.
+    public static let menuOverlap: CGFloat = 2
+
+    /// The menus among `menus` that hang from one of `menuBars`. A window whose top reaches
+    /// into a menu bar covers it rather than hanging from it: an overlay some utilities keep
+    /// on screen at the menu level, invisible and click-through, which is never a menu.
     public static func menuBarMenus(_ menus: [CGRect], menuBars: [CGRect]) -> [CGRect] {
         menus.filter { menu in
             menuBars.contains { bar in
-                menu.maxY >= bar.minY - menuGap && menu.maxY <= bar.maxY
+                menu.maxY >= bar.minY - menuGap && menu.maxY <= bar.minY + menuOverlap
                     && menu.maxX > bar.minX && menu.minX < bar.maxX
             }
+        }
+    }
+
+    /// Whether `window` reaches into one of `menuBars`. What a menu bar item opens (a menu,
+    /// a popover, a panel) hangs below the bar; a window that covers it is something else,
+    /// such as a full-screen overlay.
+    public static func coversMenuBar(_ window: CGRect, menuBars: [CGRect]) -> Bool {
+        menuBars.contains { bar in
+            window.maxY > bar.minY + menuOverlap && window.minY < bar.maxY
+                && window.maxX > bar.minX && window.minX < bar.maxX
         }
     }
 
