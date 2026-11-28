@@ -29,9 +29,13 @@ public enum SystemItems {
     /// The value of a checkbox's key that hides the item.
     public static let hidden = 8
 
-    /// Clock and Control Center have no checkbox and stay. Time Machine and VPN have one, but
-    /// showed no item on the machine this was measured on, so their names are not known;
-    /// Battery and the others of a portable Mac were not there either.
+    /// Clock and Control Center have no checkbox and stay. Battery and the others of a
+    /// portable Mac were not on the machine this was measured on.
+    ///
+    /// Time Machine and VPN show an item only with a backup destination or a VPN set up, which
+    /// that machine lacked. Their keys were measured by toggling their checkboxes; their
+    /// identifiers are the ones MenuBarAgent and Control Center carry next to the others
+    /// (Time Machine's is capitalised), not read from a drawn item.
     public static let all: [SystemItem] = [
         item("wifi", "Wi-Fi", "wifi", "WiFi"),
         item("bluetooth", "Bluetooth", "antenna.radiowaves.left.and.right", "Bluetooth"),
@@ -43,6 +47,8 @@ public enum SystemItems {
         item("now-playing", "Now Playing", "play.circle", "NowPlaying"),
         item("user", "Fast User Switching", "person.crop.circle", "UserSwitcher"),
         item("timer", "Timer", "timer", "Timer"),
+        item("TimeMachine", "Time Machine", "clock.arrow.trianglehead.counterclockwise.rotate.90", "TimeMachine"),
+        item("vpn", "VPN", "network.badge.shield.half.filled", "VPN"),
     ]
 
     private static func item(_ name: String, _ title: String, _ symbol: String, _ key: String) -> SystemItem {

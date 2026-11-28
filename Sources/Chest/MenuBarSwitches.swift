@@ -163,7 +163,7 @@ enum MenuBarSwitches {
             guard let value = CFPreferencesCopyValue(item.key as CFString, item.domain as CFString, kCFPreferencesCurrentUser, host) as? Bool else { return nil }
             return value != item.hides
         }
-        return load().flatMap { AllowList.entries(in: $0).first { $0.bundleID == bundleID }?.isAllowed }
+        return load().flatMap { AllowList.isAllowed(bundleID, in: $0) }
     }
 
     /// Forgets the value Chest kept to put back for a system item that is no longer Chest's.
@@ -174,9 +174,22 @@ enum MenuBarSwitches {
         UserDefaults.standard.set(saved, forKey: savedValuesKey)
     }
 
+    /// The app System Settings lists each helper's items under, for the helpers drawing an
+    /// app's items, in one read of the list.
+    static func listingApps() -> [String: String] {
+        load().map(AllowList.listingApps) ?? [:]
+    }
+
+    /// The other apps and helpers whose items go with those of `bundleID`, as one entry in
+    /// the list switches them all.
+    static func sharingSwitch(with bundleID: String) -> Set<String> {
+        guard !isSystemItem(bundleID) else { return [] }
+        return load().map { AllowList.sharing(bundleID, in: $0) } ?? []
+    }
+
     /// Whether MenuBarAgent has an entry for the app, so it can be switched.
     static func isListed(_ bundleID: String) -> Bool {
-        isSystemItem(bundleID) || (load().map { AllowList.entries(in: $0).contains { $0.bundleID == bundleID } } ?? false)
+        isSystemItem(bundleID) || (load().map { AllowList.entry(for: bundleID, in: $0) != nil } ?? false)
     }
 
     private static func load() -> [Any]? {
