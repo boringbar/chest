@@ -81,8 +81,9 @@ struct AppInfo {
         return items
     }()
 
+    /// - Parameter listingApps: `MenuBarSwitches.listingApps()`, read once for many items.
     @MainActor
-    init(bundleID: String) {
+    init(bundleID: String, listingApps: [String: String]? = nil) {
         self.bundleID = bundleID
         let running = NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).first
         if let system = Self.systemItems[bundleID] {
@@ -97,10 +98,20 @@ struct AppInfo {
             return
         }
         isRunning = running != nil
+        // A helper drawing an app's item (AirBuddyHelper, PasswordsMenuBarExtra) goes by that
+        // app's name and icon, as in System Settings.
+        if let app = (listingApps ?? MenuBarSwitches.listingApps())[bundleID],
+           let appURL = NSWorkspace.shared.urlForApplication(withBundleIdentifier: app) {
+            name = Self.displayName(of: appURL)
+            icon = NSWorkspace.shared.icon(forFile: appURL.path)
+            return
+        }
         let url = running?.bundleURL ?? NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
-        name = running?.localizedName
-            ?? url.map { FileManager.default.displayName(atPath: $0.path).replacingOccurrences(of: ".app", with: "") }
-            ?? bundleID
+        name = running?.localizedName ?? url.map(Self.displayName) ?? bundleID
         icon = running?.icon ?? url.map { NSWorkspace.shared.icon(forFile: $0.path) } ?? NSWorkspace.shared.icon(for: .application)
+    }
+
+    private static func displayName(of url: URL) -> String {
+        FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
     }
 }

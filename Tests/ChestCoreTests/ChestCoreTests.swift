@@ -17,9 +17,89 @@ final class AllowListTests: XCTestCase {
 
     func testReadsEntries() {
         XCTAssertEqual(AllowList.entries(in: list()), [
-            .init(bundleID: "com.example.a", isAllowed: true),
+            .init(bundleID: "com.example.a", isAllowed: true, itemBundleIDs: ["com.example.a"]),
             .init(bundleID: "com.example.b", isAllowed: false),
         ])
+    }
+
+    /// Measured on macOS 27: a helper inside an app's bundle that draws the item gets an
+    /// entry keyed by the outer app, listing the helper only as an item location.
+    private func helperList() -> [Any] {
+        list() + [
+            key("com.example.c"),
+            ["isAllowed": true, "location": key("com.example.c"), "menuItemLocations": [key("com.example.c.helper")]],
+        ]
+    }
+
+    func testFindsTheEntryOfAHelperByItsItemLocation() {
+        XCTAssertEqual(AllowList.entry(for: "com.example.c.helper", in: helperList())?.bundleID, "com.example.c")
+        XCTAssertEqual(AllowList.entry(for: "com.example.c", in: helperList())?.bundleID, "com.example.c")
+        XCTAssertEqual(AllowList.entry(for: "com.example.a", in: helperList())?.bundleID, "com.example.a")
+        XCTAssertNil(AllowList.entry(for: "com.example.new", in: helperList()))
+    }
+
+    func testSwitchesAHelperThroughItsAppsEntry() {
+        let result = AllowList.setting(false, for: ["com.example.c.helper", "com.example.new"], in: helperList())
+        XCTAssertTrue(result.changed)
+        XCTAssertEqual(result.missing, ["com.example.new"])
+        let entry = result.list[5] as? [String: Any]
+        XCTAssertEqual(entry?["isAllowed"] as? Bool, false)
+        XCTAssertEqual(AllowList.itemBundleIDs(of: entry ?? [:]), ["com.example.c.helper"])
+        // The other entries are untouched.
+        XCTAssertEqual(AllowList.entries(in: result.list).map(\.isAllowed), [true, false, false])
+    }
+
+    func testAppAndHelperInOneCall() {
+        let result = AllowList.setting(false, for: ["com.example.c", "com.example.c.helper"], in: helperList())
+        XCTAssertTrue(result.missing.isEmpty)
+        XCTAssertEqual(AllowList.entries(in: result.list).map(\.isAllowed), [true, false, false])
+    }
+
+    /// A helper with an entry of its own that is also listed under its app's entry.
+    private func doubleList() -> [Any] {
+        helperList() + [
+            key("com.example.c.helper"),
+            ["isAllowed": true, "location": key("com.example.c.helper"), "menuItemLocations": [key("com.example.c.helper")]],
+        ]
+    }
+
+    func testPrefersAnAppsOwnEntry() {
+        XCTAssertEqual(AllowList.entry(for: "com.example.c.helper", in: doubleList())?.bundleID, "com.example.c.helper")
+    }
+
+    func testAnAppWithItsOwnEntryIsSwitchedByItAlone() {
+        // Another app's entry listing it is left alone, with that app's items.
+        let result = AllowList.setting(false, for: ["com.example.c.helper"], in: doubleList())
+        XCTAssertEqual(AllowList.entries(in: result.list).map(\.isAllowed), [true, false, true, false])
+        XCTAssertEqual(AllowList.isAllowed("com.example.c.helper", in: result.list), false)
+        XCTAssertEqual(AllowList.isAllowed("com.example.c", in: result.list), true)
+        XCTAssertEqual(AllowList.sharing("com.example.c.helper", in: doubleList()), [])
+        XCTAssertEqual(AllowList.sharing("com.example.c", in: doubleList()), [])
+    }
+
+    func testAllowedIfAnyOfItsEntriesAllows() {
+        // Two apps both list the helper, which has no entry of its own.
+        let list = helperList() + [
+            key("com.example.d"),
+            ["isAllowed": false, "location": key("com.example.d"), "menuItemLocations": [key("com.example.c.helper")]],
+        ]
+        XCTAssertEqual(AllowList.isAllowed("com.example.c.helper", in: list), true)
+        let off = AllowList.setting(false, for: ["com.example.c.helper"], in: list).list
+        XCTAssertEqual(AllowList.isAllowed("com.example.c.helper", in: off), false)
+        XCTAssertNil(AllowList.isAllowed("com.example.new", in: list))
+    }
+
+    func testListingAppsOfHelpers() {
+        XCTAssertEqual(AllowList.listingApps(in: helperList()), ["com.example.c.helper": "com.example.c"])
+        // A helper with an entry of its own goes by it.
+        XCTAssertEqual(AllowList.listingApps(in: doubleList()), [:])
+    }
+
+    func testAppsSharingASwitch() {
+        XCTAssertEqual(AllowList.sharing("com.example.c.helper", in: helperList()), ["com.example.c"])
+        XCTAssertEqual(AllowList.sharing("com.example.c", in: helperList()), ["com.example.c.helper"])
+        XCTAssertEqual(AllowList.sharing("com.example.a", in: helperList()), [])
+        XCTAssertEqual(AllowList.sharing("com.example.new", in: helperList()), [])
     }
 
     func testSwitchesOnlyIsAllowedAndKeepsEveryOtherField() {
