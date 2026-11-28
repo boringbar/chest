@@ -74,9 +74,9 @@ Debug builds log to stderr with a `[Chest]` prefix.
 
 ## Limits
 
-- Hiding is per app: an app with two menu bar items hides both.
+- Hiding is per app: an app with two menu bar items hides both. That includes items drawn by a helper inside the app (System Settings lists them under the app): if the app and its helper both have items, they go and come back together, even if one is in the drawer and the other left of the dot, and taking one out of the chest takes the other out too.
 - macOS lists an app under "Allow in the Menu Bar" by itself, usually as soon as its item appears. Until it does, the app cannot go into the chest; Chest says so and offers **Refresh Menu Bar**, which restarts the menu bar so macOS lists it (the menu bar blinks once).
-- Of the items under **Menu Bar Controls**, these can go in: Wi-Fi, Bluetooth, AirDrop, Focus, Screen Mirroring, Display, Sound, Now Playing, Fast User Switching, Timer, Spotlight, Text Input and Weather. The clock and Control Center can't, nor can the controls added from the Control Gallery. Time Machine, VPN, Battery and the others of a portable Mac aren't mapped yet; see the approach doc.
+- Of the items under **Menu Bar Controls**, these can go in: Wi-Fi, Bluetooth, AirDrop, Focus, Screen Mirroring, Display, Sound, Now Playing, Fast User Switching, Timer, Time Machine, VPN, Spotlight, Text Input and Weather (Time Machine's and VPN's items weren't seen on screen while testing; see the approach doc). The clock and Control Center can't, nor can the controls added from the Control Gallery. Battery and the others of a portable Mac aren't mapped yet.
 - If Chest is force quit or crashes, the items stay hidden until it runs again, or until you switch them back on in System Settings › Menu Bar.
 - Items that do not fit in the menu bar are collapsed by macOS behind its own `«` button, on any Mac (sooner on one with a notch). That includes items hidden left of the dot when Chest opens: keep a few there and the rest in the drawer, which wraps into rows of ten and has room for any number.
 - The list and its format are undocumented and may change in a macOS update.

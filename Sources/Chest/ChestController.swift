@@ -402,6 +402,7 @@ final class ChestController {
     private func remove(_ bundleID: String) {
         if opened?.bundleID == bundleID { endOpened(rehide: false) }
         store.remove(bundleID)
+        letGoOfSharing(bundleID)
         // It stays in the menu bar for good: right of the dot, not among the hidden items.
         placeRightOfDot(bundleID)
         MenuBarSwitches.set(true, for: [bundleID])
@@ -717,6 +718,7 @@ final class ChestController {
             } else if self.store.section(of: bundleID) == .hidden {
                 log("\(bundleID) right of the dot: showing it")
                 self.store.remove(bundleID)
+                self.letGoOfSharing(bundleID)
             }
         }
     }
@@ -760,7 +762,20 @@ final class ChestController {
             if isOpen { MenuBarSwitches.set(true, for: [bundleID]) }
         } else {
             store.remove(bundleID)
+            letGoOfSharing(bundleID)
             MenuBarSwitches.set(true, for: [bundleID])
+        }
+    }
+
+    /// Takes out of the chest the items that share an item's switch (an app's and its
+    /// helper's), as that item leaves for good: switching it on brings them back too, and
+    /// hiding them again would take it away with them.
+    private func letGoOfSharing(_ bundleID: String) {
+        for other in MenuBarSwitches.sharingSwitch(with: bundleID) where store.section(of: other) != nil {
+            log("\(other) shares its switch with \(bundleID); taking it out too")
+            if opened?.bundleID == other { endOpened(rehide: false) }
+            store.remove(other)
+            MenuBarSwitches.forget(other)
         }
     }
 
@@ -799,7 +814,8 @@ final class ChestController {
 
     private var drawerItems: [AppInfo] {
         // An app that is not running has no item to show.
-        store.items.map(AppInfo.init).filter(\.isRunning)
+        let listingApps = MenuBarSwitches.listingApps()
+        return store.items.map { AppInfo(bundleID: $0, listingApps: listingApps) }.filter(\.isRunning)
     }
 
     /// Shows the hidden items left of the dot and opens the drawer under it.
